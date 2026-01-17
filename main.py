@@ -3,6 +3,8 @@ import argparse
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from prompts import system_prompt
+from call_function import available_functions
 
 # set up
 # source .venv/bin/activate
@@ -40,7 +42,8 @@ def main():
     client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
     model='gemini-2.5-flash', 
-    contents= messages
+    contents= messages,
+    config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt)
     )
     
     if args.verbose:
@@ -48,7 +51,13 @@ def main():
         track_tokens(response)
         print("Response:")
    
-    print (response.text)
+    # print (response.text)
+    if response.function_calls:
+        for each in response.function_calls:
+            print (f"Calling function: {each.name}({each.args})")
+    else:
+        print (response.text)
+    
 
 if __name__ == "__main__":
     main()
