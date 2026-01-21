@@ -1,3 +1,20 @@
+from google.genai import types
+
+schema_get_file_content = types.FunctionDeclaration(
+    name="get_file_content",
+    description="Opens a file at a designated file path and returns the contents as a string. Currently trunkates at 10000 chars",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="File path to a python file",
+            )
+            ,
+        },
+    ),
+)
+
 
 '''
 Returns the information in a file as a string or an error message

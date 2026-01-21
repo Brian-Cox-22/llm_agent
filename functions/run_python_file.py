@@ -1,3 +1,29 @@
+from google.genai import types
+
+
+# have to fix the types on this still :/
+# Maybe fixed it now? Not sure if I need to somehow set up a subtype for the args type
+schema_run_python_file = types.FunctionDeclaration(
+    name="run_python_file",
+    description="Check if a file is a viable python file; if so runs it as a subprocess",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="File path to a python file",
+            ),
+            "args": types.Schema(
+                type=types.Type.ARRAY,
+                items = types.Schema(
+                    type = types.Type.STRING,
+                ),
+                description="Any additional arguments that the python function needs. Default is none."
+                )
+            }
+        ),
+    )
+
 def run_python_file(working_directory, file_path, args=None):
     import os
     import subprocess

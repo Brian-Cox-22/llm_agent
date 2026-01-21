@@ -1,3 +1,23 @@
+from google.genai import types
+
+schema_write_file = schema_run_python_file = types.FunctionDeclaration(
+    name="write_file",
+    description="Writes the provided content to the file at the provided path",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="File path to a file. Creates it if it does not exist",
+            ),
+            "content": types.Schema(
+                type=types.Type.STRING,
+                description="A string to be written to the file."
+            )
+        },
+    ),
+)
+
 def write_file(working_directory, file_path, content):
     '''
     Adds the ability to write (or overwrite) to a file, so long

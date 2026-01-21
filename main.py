@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from prompts import system_prompt
-from call_function import available_functions
+from call_function import available_functions, call_function
 
 # set up
 # source .venv/bin/activate
@@ -52,9 +52,26 @@ def main():
         print("Response:")
    
     # print (response.text)
+
+    # creating a list to store function calls
+    function_call_results_list = []
     if response.function_calls:
         for each in response.function_calls:
-            print (f"Calling function: {each.name}({each.args})")
+            # print (f"Calling function: {each.name}({each.args})")
+
+            function_call_result = call_function(each, verbose=args.verbose)
+            part = function_call_result.parts
+
+            if not part:
+                raise Exception("Empty parts list resulted from the function call")
+            if part[0].function_response == None:
+                raise Exception("Function response is None, not a FunctionResponse object")
+            if part[0].function_response.response == None:
+                raise Exception("Response to the function call is None, not the function result")
+            function_call_results_list.append(part[0].function_response.response["result"])
+            if args.verbose:
+                print(f"-> {part[0].function_response.response}")
+
     else:
         print (response.text)
     
