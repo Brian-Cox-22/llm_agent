@@ -1,5 +1,6 @@
 import os
 import argparse
+import sys
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -25,55 +26,83 @@ def track_tokens(response):
 
     print(f"Prompt tokens: {prompt_tokens}\nResponse tokens: {response_tokens}")
 
+def call_llm(messages, verbose):
+    api_key = get_api_key()
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY environment variable not set")
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+            model='gemini-2.5-flash', 
+            contents= messages,
+            config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt)
+            )
+    
+    if not response.usage_metadata:
+        raise RuntimeError("Gemini API response appears to be malformed")
+
+    if verbose:
+        print("Prompt tokens:", response.usage_metadata.prompt_token_count)
+        print("Response tokens:", response.usage_metadata.candidates_token_count)
+    
+
+    if response.candidates:
+        for candidate in response.candidates:
+            if candidate.content:
+                messages.append(candidate.content)
+    
+    # if no function calls, we're done
+    if not response.function_calls:
+        return response.text
+    
+
+    function_responses = []
+    for function_call in response.function_calls:
+        result = call_function(function_call, verbose)
+        if (
+            not result.parts
+            or not result.parts[0].function_response
+            or not result.parts[0].function_response.response
+        ):
+            raise RuntimeError(f"Empty function response for {function_call.name}")
+        if verbose:
+            print(f"-> {result.parts[0].function_response.response}")
+        function_responses.append(result.parts[0])
+
+
+    # feed function response back to LLM
+    messages.append(types.Content(role="user", parts=function_responses))
+
 
 def main():
     parser = argparse.ArgumentParser(description="Chatbot")
     parser.add_argument("user_prompt", type=str, help="Prompt to chatbot")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
-
     args  = parser.parse_args()
 
     # messages replaces prompt, allows for multiple prompts
     messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
-
-    
-    api_key = get_api_key()
-    
-    client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-    model='gemini-2.5-flash', 
-    contents= messages,
-    config=types.GenerateContentConfig(tools=[available_functions], system_instruction=system_prompt)
-    )
     
     if args.verbose:
-        print(f"User prompt: {messages}")
-        track_tokens(response)
-        print("Response:")
-   
-    # print (response.text)
+        print(f"User prompt: {args.user_prompt}\n")
 
-    # creating a list to store function calls
-    function_call_results_list = []
-    if response.function_calls:
-        for each in response.function_calls:
-            # print (f"Calling function: {each.name}({each.args})")
+    
+    # now we loop
+    for i in range(20):
+        response = call_llm(messages, args.verbose)
+        if response:
+            print("Final response:")
+            print(response)
+            return
+    
+    print("Error: Agent failed to reach a conclusion")
+    sys.exit(1)
+    
+    
 
-            function_call_result = call_function(each, verbose=args.verbose)
-            part = function_call_result.parts
 
-            if not part:
-                raise Exception("Empty parts list resulted from the function call")
-            if part[0].function_response == None:
-                raise Exception("Function response is None, not a FunctionResponse object")
-            if part[0].function_response.response == None:
-                raise Exception("Response to the function call is None, not the function result")
-            function_call_results_list.append(part[0].function_response.response["result"])
-            if args.verbose:
-                print(f"-> {part[0].function_response.response}")
-
-    else:
-        print (response.text)
+    # else:
+    #     print (response.text)
     
 
 if __name__ == "__main__":
