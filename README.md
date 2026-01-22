@@ -1,0 +1,1 @@
+This is, basically, a learning 'toy.' I do not particularily recomend using it for anything. It follows the directions for building an 'agent' that Boot.dev puts out, and nothing more. The safegards are fairly limited, as is the capability.
